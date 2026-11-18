@@ -197,6 +197,7 @@ async function startCam(){
   let fm;try{const s=await BarcodeDetector.getSupportedFormats();fm=['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'].filter(f=>s.includes(f))}catch{}
   detector=new BarcodeDetector(fm&&fm.length?{formats:fm}:undefined);
   setCamMsg('');
+  try{await stream.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'continuous'}]})}catch{}
   const caps=stream.getVideoTracks()[0].getCapabilities?.();$('#torch').classList.toggle('hidden',!(caps&&caps.torch));
   resumeScan();
 }
@@ -213,6 +214,26 @@ $('#startCam').onclick=startCam;
 $('#torch').onclick=async()=>{torchOn=!torchOn;try{await stream.getVideoTracks()[0].applyConstraints({advanced:[{torch:torchOn}]})}catch{}};
 const manual=()=>{const v=$('#man').value.trim();if(!v)return;$('#man').value='';openSheet(find(v),v,false)};
 $('#manGo').onclick=manual;$('#man').onkeydown=e=>{if(e.key==='Enter')manual()};
+
+/* ---------- lettore Bluetooth (si comporta come una tastiera) ---------- */
+let sb='',sLast=0,sEl=null,sStart=null;
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.altKey||e.metaKey)return;
+  const now=performance.now();
+  if(e.key==='Enter'||e.key==='Tab'){
+    if(sb.length>=5){ // sequenza veloce di caratteri = scansione del lettore
+      e.preventDefault();
+      if(sEl&&sStart!=null&&sEl.value!==sStart){sEl.value=sStart;sEl.dispatchEvent(new Event('input'))}
+      const c=sb;sb='';sStart=null;sEl=null;onScanner(c);return}
+    sb='';return}
+  if(e.key.length!==1)return;
+  if(now-sLast>80){sb='';const a=document.activeElement;sEl=a&&/INPUT|TEXTAREA/.test(a.tagName)?a:null;sStart=sEl?sEl.value:null}
+  sb+=e.key;sLast=now;
+},true);
+function onScanner(c){
+  if(sheetOpen){const q=$('#qty');if(q&&q.value.trim()!==''){toast('Conferma o annulla prima di scansionare');return}}
+  beep();navigator.vibrate&&navigator.vibrate(60);openSheet(find(c),c,false);
+}
 
 /* ---------- scheda articolo + quantità ---------- */
 let cur=null;
