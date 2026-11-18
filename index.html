@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#1f2937">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Inventario Eliocopy</title>
+<style>
+:root{--bg:#111827;--card:#1f2937;--line:#374151;--txt:#f3f4f6;--mut:#9ca3af;--acc:#2563eb;--ok:#16a34a;--warn:#f59e0b;--bad:#dc2626}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,Roboto,sans-serif;font-size:16px}
+body{display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--card);padding:10px 12px 0;border-bottom:1px solid var(--line)}
+header h1{margin:0 0 8px;font-size:17px;font-weight:600}
+nav{display:flex;gap:4px}
+nav button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--mut);padding:10px 4px;font-size:15px;font-weight:600}
+nav button.on{color:#fff;border-color:var(--acc)}
+main{flex:1;overflow:auto;position:relative}
+section{display:none;padding:12px}
+section.on{display:block}
+#v-scan{padding:0}
+.cam{position:relative;background:#000;height:52vh;min-height:260px;overflow:hidden}
+.cam video{width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;left:10%;right:10%;top:30%;bottom:30%;border:3px solid rgba(255,255,255,.85);border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35);pointer-events:none}
+.frame::after{content:"";position:absolute;left:6%;right:6%;top:50%;height:2px;background:var(--bad)}
+.camMsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;color:#fff}
+.camMsg:empty{display:none}
+.tools{position:absolute;right:8px;top:8px;display:flex;gap:8px}
+.tools button{background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:20px;padding:8px 14px;font-size:14px}
+.bar{padding:12px;display:flex;gap:8px}
+.bar input{flex:1}
+input,textarea{background:#0b1220;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:12px;font-size:17px;width:100%}
+input:focus{outline:2px solid var(--acc)}
+button.b{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:13px 16px;font-size:16px;font-weight:600}
+button.b.g{background:#374151}
+button.b.ok{background:var(--ok)}
+button.b.bad{background:var(--bad)}
+.stat{padding:0 12px 12px;color:var(--mut);font-size:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.row .d{min-width:0}.row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{color:var(--mut);font-size:13px}.row .q{font-size:22px;font-weight:700}
+.tag{display:inline-block;background:var(--warn);color:#000;border-radius:6px;font-size:11px;padding:1px 6px;margin-left:6px;font-weight:700}
+.sum{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0}
+.sum div{background:var(--card);border-radius:10px;padding:10px}.sum b{display:block;font-size:20px}.sum span{color:var(--mut);font-size:13px}
+.acts{display:flex;gap:8px;margin:10px 0}.acts .b{flex:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:16px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.6);z-index:10;max-height:92vh;overflow:auto}
+.sheet.hidden,.hidden{display:none}
+.code{font-size:13px;color:var(--mut)}.code b{color:#fff;font-size:16px}
+.desc{font-size:20px;font-weight:700;margin:4px 0 10px;line-height:1.2}
+.prices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.prices div{background:#0b1220;border-radius:10px;padding:8px 10px;color:var(--mut);font-size:13px}.prices b{display:block;color:#fff;font-size:20px}
+.warn{background:#3a2a05;border:1px solid var(--warn);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:15px}
+label{display:block;color:var(--mut);font-size:13px;margin:8px 0 4px}
+#qty{font-size:32px;font-weight:700;text-align:center}
+.btns{display:flex;gap:8px;margin-top:12px}.btns .b{flex:1}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#000c;color:#fff;padding:10px 16px;border-radius:20px;font-size:15px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+p.i{color:var(--mut);font-size:14px;line-height:1.4}
+</style>
+</head>
+<body>
+<header>
+  <h1>Inventario Eliocopy</h1>
+  <nav>
+    <button data-v="scan" class="on">Scansiona</button>
+    <button data-v="inv">Inventario</button>
+    <button data-v="art">Articoli</button>
+  </nav>
+</header>
+<main>
+  <section id="v-scan" class="on">
+    <div class="cam">
+      <video id="video" playsinline muted></video>
+      <div class="frame"></div>
+      <div class="tools"><button id="torch" class="hidden">Torcia</button></div>
+      <div class="camMsg" id="camMsg"><button class="b" id="startCam">Avvia fotocamera</button></div>
+    </div>
+    <div class="bar">
+      <input id="man" inputmode="text" placeholder="Digita EAN o codice a mano" autocomplete="off">
+      <button class="b" id="manGo">Cerca</button>
+    </div>
+    <div class="stat" id="scanStat"></div>
+  </section>
+
+  <section id="v-inv">
+    <input id="q" placeholder="Cerca nell'inventario…" autocomplete="off">
+    <div class="sum" id="sum"></div>
+    <div class="acts">
+      <button class="b ok" id="exp">Esporta Excel/CSV</button>
+      <button class="b bad" id="reset">Azzera</button>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <section id="v-art">
+    <div class="sum" id="artSum"></div>
+    <p class="i">Carica il listino in formato CSV (da Excel: Salva con nome → CSV). Colonne: codice, EAN, descrizione, prezzo acquisto, prezzo vendita. Se l'EAN non è nel listino l'articolo viene salvato come "non in elenco".</p>
+    <div class="acts">
+      <label class="b" style="text-align:center;margin:0;color:#fff">Carica listino CSV<input type="file" id="file" accept=".csv,.txt,text/csv" class="hidden"></label>
+    </div>
+    <div class="acts"><button class="b g" id="demo">Carica 6 articoli di prova</button></div>
+    <p class="i" id="impMsg"></p>
+  </section>
+</main>
+
+<div class="sheet hidden" id="sheet"></div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>(n==null||isNaN(n))?'–':Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const fq=n=>Number(n).toLocaleString('it-IT',{maximumFractionDigits:3});
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),1800)}
+
+/* ---------- archivio (IndexedDB) ---------- */
+let db;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('inventario',1);
+  r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('articoli',{keyPath:'codice'});d.createObjectStore('inventario',{keyPath:'key'})};
+  r.onsuccess=()=>{db=r.result;res()};r.onerror=()=>rej(r.error)})}
+const rq=r=>new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const st=(n,m='readonly')=>db.transaction(n,m).objectStore(n);
+const getAll=n=>rq(st(n).getAll());
+const put=(n,o)=>rq(st(n,'readwrite').put(o));
+const del=(n,k)=>rq(st(n,'readwrite').delete(k));
+const clr=n=>rq(st(n,'readwrite').clear());
+const putMany=(n,a)=>new Promise((res,rej)=>{const t=db.transaction(n,'readwrite'),s=t.objectStore(n);a.forEach(o=>s.put(o));t.oncomplete=res;t.onerror=()=>rej(t.error)});
+
+let arts=[],byEan=new Map(),byCode=new Map(),inv=new Map();
+const normEan=s=>{s=String(s).trim();return /^\d+$/.test(s)?s.replace(/^0+/,''):s.toUpperCase()};
+function buildIndex(){byEan.clear();byCode.clear();for(const a of arts){a.eans.forEach(e=>byEan.set(normEan(e),a));byCode.set(a.codice.toLowerCase(),a)}}
+const find=c=>{c=c.trim();return byEan.get(normEan(c))||byCode.get(c.toLowerCase())||null};
+async function load(){arts=await getAll('articoli');buildIndex();inv=new Map((await getAll('inventario')).map(r=>[r.key,r]))}
+
+/* ---------- importazione listino CSV ---------- */
+function parseCSV(t){
+  if(t.charCodeAt(0)===0xFEFF)t=t.slice(1);
+  const first=t.split(/\r?\n/,1)[0],cnt=d=>first.split(d).length;
+  const delim=[';','\t',','].reduce((b,d)=>cnt(d)>cnt(b)?d:b,';');
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;
+    else if(c===delim){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';rows.push(row);row=[]}
+    else f+=c}
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  return rows.filter(r=>r.some(x=>x.trim()!==''));
+}
+async function readText(file){const b=await file.arrayBuffer();try{return new TextDecoder('utf-8',{fatal:true}).decode(b)}catch{return new TextDecoder('windows-1252').decode(b)}}
+function parseNum(s){if(s==null)return null;s=String(s).replace(/[€\s]/g,'');if(!s)return null;if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n}
+function mapCols(h){
+  const n=h.map(x=>x.toLowerCase().replace(/[^a-z0-9]/g,'')),m={},used=new Set();
+  const take=(k,re)=>{const i=n.findIndex((x,j)=>!used.has(j)&&re.test(x));if(i>=0){m[k]=i;used.add(i)}};
+  take('ean',/ean|barcode|barre|gtin/);take('acq',/acq|costo/);take('ven',/vend|pvp|listino|dettaglio/);
+  take('desc',/desc|nome|denominaz/);take('codice',/cod|art|interno/);return m;
+}
+async function importRows(rows){
+  const pos={codice:0,ean:1,desc:2,acq:3,ven:4};let m,start=1,how='dall\'intestazione';
+  if(rows[0].some(x=>/^\d{8,14}$/.test(x.trim()))){m=pos;start=0;how='per posizione (senza intestazione)'}
+  else{m=mapCols(rows[0]);if(m.ean==null||m.codice==null){m=pos;how='per posizione (intestazione non riconosciuta)'}}
+  const map=new Map();let sci=0;
+  for(let i=start;i<rows.length;i++){const r=rows[i],code=(r[m.codice]||'').trim();if(!code)continue;
+    const a=map.get(code)||{codice:code,eans:[],desc:'',acq:null,ven:null};
+    ((r[m.ean]||'').trim().split(/[|;,\s]+/).filter(Boolean)).forEach(e=>{if(/e\+/i.test(e))sci++;else if(!a.eans.includes(e))a.eans.push(e)});
+    if(m.desc!=null&&!a.desc)a.desc=(r[m.desc]||'').trim();
+    if(m.acq!=null){const v=parseNum(r[m.acq]);if(v!=null)a.acq=v}
+    if(m.ven!=null){const v=parseNum(r[m.ven]);if(v!=null)a.ven=v}
+    map.set(code,a)}
+  const list=[...map.values()];
+  await clr('articoli');await putMany('articoli',list);await load();
+  const conEan=list.filter(a=>a.eans.length).length;
+  $('#impMsg').innerHTML=`Importati <b>${list.length}</b> articoli (${conEan} con EAN). Colonne lette ${how}.`+(sci?`<br><b style="color:#f59e0b">Attenzione: ${sci} EAN sono in notazione scientifica (Excel li ha rovinati). Nel file formatta la colonna EAN come Testo e riesporta.</b>`:'');
+  renderAll();toast('Listino caricato');
+}
+$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;const rows=parseCSV(await readText(f));if(rows.length<2){toast('File vuoto o non valido');return}await importRows(rows);e.target.value=''};
+$('#demo').onclick=()=>importRows(parseCSV(`Codice;EAN;Descrizione;Prezzo acquisto;Prezzo vendita
+458001;8001234567897;Quaderno A4 quadretti 5mm;0,85;1,90
+458002;8001234567903;Penna gel nera 0,7;0,40;1,20
+458003;8001234567910;Evidenziatore giallo;0,35;0,99
+380002;8001234567927;Colla stick 21g;0,60;1,50
+427015;8001234567934;Matite colorate 12 pz;1,80;4,50
+CPP0032;8001234567941;Gomma bianca;0,15;0,60`));
+
+/* ---------- fotocamera e scansione ---------- */
+const video=$('#video');let stream=null,detector=null,scanning=false,loopId=0,sheetOpen=false,torchOn=false;
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=1100;g.gain.value=.15;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch{}}
+function setCamMsg(html){$('#camMsg').innerHTML=html;document.querySelector('.frame').style.display=html?'none':'';const b=$('#startCam');if(b)b.onclick=startCam}
+async function startCam(){
+  if(stream){resumeScan();return}
+  if(!('BarcodeDetector' in window)){setCamMsg('Questo browser non legge i barcode.<br>Usa Chrome aggiornato oppure digita il codice a mano.');return}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false})}
+  catch(e){setCamMsg(`Fotocamera non disponibile (${esc(e.name)}).<br>Consenti l'accesso alla fotocamera.<br><button class="b" id="startCam">Riprova</button>`);return}
+  video.srcObject=stream;await video.play();
+  let fm;try{const s=await BarcodeDetector.getSupportedFormats();fm=['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'].filter(f=>s.includes(f))}catch{}
+  detector=new BarcodeDetector(fm&&fm.length?{formats:fm}:undefined);
+  setCamMsg('');
+  const caps=stream.getVideoTracks()[0].getCapabilities?.();$('#torch').classList.toggle('hidden',!(caps&&caps.torch));
+  resumeScan();
+}
+function resumeScan(){
+  if(!stream||sheetOpen||!$('#v-scan').classList.contains('on'))return;
+  scanning=true;const id=++loopId;
+  (async()=>{while(scanning&&id===loopId){
+    try{const r=await detector.detect(video);if(r.length){scanning=false;beep();navigator.vibrate&&navigator.vibrate(60);const c=r[0].rawValue;openSheet(find(c),c,false);return}}catch{}
+    await new Promise(r=>setTimeout(r,120))}})();
+}
+function stopScan(){scanning=false;loopId++}
+function stopCam(){stopScan();if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;setCamMsg('<button class="b" id="startCam">Avvia fotocamera</button>')}}
+$('#startCam').onclick=startCam;
+$('#torch').onclick=async()=>{torchOn=!torchOn;try{await stream.getVideoTracks()[0].applyConstraints({advanced:[{torch:torchOn}]})}catch{}};
+const manual=()=>{const v=$('#man').value.trim();if(!v)return;$('#man').value='';openSheet(find(v),v,false)};
+$('#manGo').onclick=manual;$('#man').onkeydown=e=>{if(e.key==='Enter')manual()};
+
+/* ---------- scheda articolo + quantità ---------- */
+let cur=null;
+function openSheet(art,ean,edit){
+  stopScan();sheetOpen=true;cur={art,ean,edit};
+  const key=art?art.codice:'EAN:'+normEan(ean),ex=inv.get(key);
+  let h='';
+  if(art){h+=`<div class="code">Codice <b>${esc(art.codice)}</b> · EAN ${esc(ean)}</div><div class="desc">${esc(art.desc||'(senza descrizione)')}</div>
+    <div class="prices"><div>Acquisto<b>${fmt(art.acq)}</b></div><div>Vendita<b>${fmt(art.ven)}</b></div></div>`}
+  else{h+=`<div class="warn">Codice <b>${esc(ean)}</b> non presente nell'elenco articoli.</div>
+    <label>Descrizione (facoltativa)</label><input id="udesc" value="${esc(ex?ex.desc:'')}" placeholder="es. quaderno blu">`}
+  if(ex&&!edit)h+=`<div class="warn">Già contato: <b>${fq(ex.qta)}</b> pz</div>`;
+  h+=`<label>Quantità in negozio</label><input id="qty" type="text" inputmode="decimal" autocomplete="off" value="${edit&&ex?fq(ex.qta).replace(/\./g,''):''}">`;
+  h+='<div class="btns">';
+  if(edit)h+=`<button class="b ok" data-a="set">Salva</button><button class="b bad" data-a="del">Elimina</button>`;
+  else if(ex)h+=`<button class="b ok" data-a="add">Somma</button><button class="b" data-a="set">Sostituisci</button>`;
+  else h+=`<button class="b ok" data-a="set">Conferma</button>`;
+  h+=`<button class="b g" data-a="no">Annulla</button></div>`;
+  const s=$('#sheet');s.innerHTML=h;s.classList.remove('hidden');
+  s.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>act(b.dataset.a));
+  const q=$('#qty');q.onkeydown=e=>{if(e.key==='Enter'&&!ex)act('set')};
+  setTimeout(()=>q.focus(),60);
+}
+function closeSheet(){$('#sheet').classList.add('hidden');sheetOpen=false;cur=null;resumeScan()}
+async function act(a){
+  const {art,ean}=cur,key=art?art.codice:'EAN:'+normEan(ean),ex=inv.get(key);
+  if(a==='no'){closeSheet();return}
+  if(a==='del'){await del('inventario',key);inv.delete(key);closeSheet();renderAll();toast('Riga eliminata');return}
+  const q=parseNum($('#qty').value);if(q==null||q<0){toast('Inserisci la quantità');return}
+  const ud=$('#udesc');
+  const rec={key,codice:art?art.codice:'',ean:art?(art.eans.find(e=>normEan(e)===normEan(ean))||ean):ean,
+    desc:art?art.desc:(ud?ud.value.trim():''),acq:art?art.acq:null,ven:art?art.ven:null,
+    qta:a==='add'?(ex?ex.qta:0)+q:q,ts:Date.now(),sconosciuto:!art};
+  await put('inventario',rec);inv.set(key,rec);closeSheet();renderAll();toast(`Salvato: ${fq(rec.qta)} pz`);
+}
+
+/* ---------- elenco inventario ed esportazione ---------- */
+function renderAll(){renderScanStat();renderInv();renderArt()}
+function renderScanStat(){const v=[...inv.values()];$('#scanStat').textContent=`Contati: ${v.length} articoli · ${fq(v.reduce((s,r)=>s+r.qta,0))} pezzi`}
+function renderArt(){$('#artSum').innerHTML=`<div><b>${arts.length}</b><span>articoli in elenco</span></div><div><b>${byEan.size}</b><span>codici EAN</span></div>`}
+function renderInv(){
+  const v=[...inv.values()],f=$('#q').value.trim().toLowerCase();
+  const tot=v.reduce((s,r)=>s+r.qta,0),va=v.reduce((s,r)=>s+r.qta*(r.acq||0),0),vv=v.reduce((s,r)=>s+r.qta*(r.ven||0),0);
+  $('#sum').innerHTML=`<div><b>${v.length}</b><span>articoli contati</span></div><div><b>${fq(tot)}</b><span>pezzi totali</span></div><div><b>${fmt(va)}</b><span>valore acquisto</span></div><div><b>${fmt(vv)}</b><span>valore vendita</span></div>`;
+  const l=v.filter(r=>!f||(r.codice+' '+r.desc+' '+r.ean).toLowerCase().includes(f)).sort((a,b)=>b.ts-a.ts);
+  $('#list').innerHTML=l.slice(0,300).map(r=>`<div class="row" data-k="${esc(r.key)}"><div class="d"><div class="t">${esc(r.desc||r.codice||r.ean)}${r.sconosciuto?'<span class="tag">NON IN ELENCO</span>':''}</div><div class="s">${esc(r.codice)} ${esc(r.ean)}</div></div><div class="q">${fq(r.qta)}</div></div>`).join('')+(l.length>300?`<p class="i">Mostrate le ultime 300 righe su ${l.length}. Usa la ricerca.</p>`:'')||'<p class="i">Nessun articolo contato.</p>';
+  document.querySelectorAll('#list .row').forEach(el=>el.onclick=()=>{const r=inv.get(el.dataset.k);if(!r)return;const a=r.sconosciuto?null:(byCode.get(r.codice.toLowerCase())||{codice:r.codice,eans:[r.ean],desc:r.desc,acq:r.acq,ven:r.ven});openSheet(a,r.ean,true)});
+}
+$('#q').oninput=renderInv;
+async function exportCSV(){
+  const v=[...inv.values()].sort((a,b)=>(a.codice||'~'+a.ean).localeCompare(b.codice||'~'+b.ean));
+  const n=x=>x==null?'':String(x).replace('.',','),q=x=>'"'+String(x).replace(/"/g,'""')+'"',txt=x=>/^\d+$/.test(x)?`="${x}"`:q(x);
+  const rows=[['Codice','EAN','Descrizione','Prezzo acquisto','Prezzo vendita','Quantità','Valore acquisto','Valore vendita','Non in elenco']];
+  v.forEach(r=>rows.push([q(r.codice),txt(r.ean),q(r.desc),n(r.acq),n(r.ven),n(r.qta),n(r.acq==null?'':+(r.acq*r.qta).toFixed(2)),n(r.ven==null?'':+(r.ven*r.qta).toFixed(2)),r.sconosciuto?'SI':'']));
+  const d=new Date(),p=x=>String(x).padStart(2,'0'),name=`inventario_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`;
+  const file=new File(['﻿'+rows.map(r=>r.join(';')).join('\r\n')],name,{type:'text/csv'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});return}catch(e){if(e.name==='AbortError')return}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+$('#exp').onclick=()=>{if(!inv.size){toast('Niente da esportare');return}exportCSV()};
+$('#reset').onclick=async()=>{if(!inv.size)return;if(confirm('Azzerare tutto l\'inventario? Hai già esportato il file?')){await clr('inventario');inv.clear();renderAll();toast('Inventario azzerato')}};
+
+/* ---------- schede ---------- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='v-'+b.dataset.v));
+  if(b.dataset.v==='scan')startCam();else stopCam();
+  renderAll();
+});
+
+openDB().then(load).then(()=>{renderAll();startCam()});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
